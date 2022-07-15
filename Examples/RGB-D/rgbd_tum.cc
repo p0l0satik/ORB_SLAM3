@@ -32,9 +32,9 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
 
 int main(int argc, char **argv)
 {
-    if(argc != 5)
+    if(argc != 6)
     {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association" << endl;
+        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association path_to_masks" << endl;
         return 1;
     }
 
@@ -66,12 +66,15 @@ int main(int argc, char **argv)
     vTimesTrack.resize(nImages);
 
     // Main loop
-    cv::Mat imRGB, imD;
+    cv::Mat imRGB, imD, mask;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image and depthmap from file
         imRGB = cv::imread(string(argv[3])+"/"+vstrImageFilenamesRGB[ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
+        std::string vstrImageFilenamesMask = vstrImageFilenamesRGB[ni];
         imD = cv::imread(string(argv[3])+"/"+vstrImageFilenamesD[ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
+        vstrImageFilenamesMask.erase(0, 4);
+        mask = cv::imread(string(argv[5])+"/"+vstrImageFilenamesMask); //,cv::IMREAD_UNCHANGED);
         double tframe = vTimestamps[ni];
 
         if(imRGB.empty())
@@ -80,15 +83,20 @@ int main(int argc, char **argv)
                  << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
             return 1;
         }
+        if(mask.empty())
+        {
+            cerr << endl << "Failed to load mask at: "
+                 << string(argv[5]) << "/" << vstrImageFilenamesMask << endl;
+            return 1;
+        }
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #else
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
-
         // Pass the image to the SLAM system
-        SLAM.TrackRGBD(imRGB,imD,tframe);
+        SLAM.TrackRGBD(imRGB, mask, imD,tframe);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();

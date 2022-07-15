@@ -1291,17 +1291,19 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
 }
 
 
-cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename)
+cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &mask, const cv::Mat &imD, const double &timestamp, string filename)
 {
     mImGray = imRGB;
     cv::Mat imDepth = imD;
 
     if(mImGray.channels()==3)
     {
-        if(mbRGB)
+        if(mbRGB) {
             cvtColor(mImGray,mImGray,cv::COLOR_RGB2GRAY);
-        else
+        }
+        else {
             cvtColor(mImGray,mImGray,cv::COLOR_BGR2GRAY);
+        }
     }
     else if(mImGray.channels()==4)
     {
@@ -1311,10 +1313,27 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
             cvtColor(mImGray,mImGray,cv::COLOR_BGRA2GRAY);
     }
 
+    cv::Mat gray_img;
+    if(mask.channels()==3)
+    {
+        if(mbRGB) {
+            cvtColor(mask,gray_img,cv::COLOR_RGB2GRAY);
+        }
+        else {
+            cvtColor(mask,gray_img,cv::COLOR_RGB2GRAY);
+        }
+    }
+    else if(mask.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mask,mask,cv::COLOR_RGBA2GRAY);
+        else
+            cvtColor(mask,mask,cv::COLOR_BGRA2GRAY);
+    }
+
     if((fabs(mDepthMapFactor-1.0f)>1e-5) || imDepth.type()!=CV_32F)
         imDepth.convertTo(imDepth,CV_32F,mDepthMapFactor);
-
-    mCurrentFrame = Frame(mImGray,imDepth,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera);
+    mCurrentFrame = Frame(mImGray, gray_img, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera);
 
     mCurrentFrame.mNameFile = filename;
     mCurrentFrame.mnDataset = mnNumDataset;

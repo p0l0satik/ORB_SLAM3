@@ -1068,21 +1068,25 @@ namespace ORB_SLAM3
     int ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
                                   OutputArray _descriptors, std::vector<int> &vLappingArea)
     {
-        //cout << "[ORBextractor]: Max Features: " << nfeatures << endl;
+        // cout << "[ORBextractor]: Max Features: " << nfeatures << endl;
         if(_image.empty())
             return -1;
 
         Mat image = _image.getMat();
+        Mat mask =  _mask.getMat();
         assert(image.type() == CV_8UC1 );
+
 
         // Pre-compute the scale pyramid
         ComputePyramid(image);
 
+
         vector < vector<KeyPoint> > allKeypoints;
         ComputeKeyPointsOctTree(allKeypoints);
-        //ComputeKeyPointsOld(allKeypoints);
+        // ComputeKeyPointsOld(allKeypoints);
 
         Mat descriptors;
+
 
         int nkeypoints = 0;
         for (int level = 0; level < nlevels; ++level)
@@ -1102,6 +1106,7 @@ namespace ORB_SLAM3
         int offset = 0;
         //Modified for speeding up stereo fisheye matching
         int monoIndex = 0, stereoIndex = nkeypoints-1;
+        
         for (int level = 0; level < nlevels; ++level)
         {
             vector<KeyPoint>& keypoints = allKeypoints[level];
@@ -1124,6 +1129,7 @@ namespace ORB_SLAM3
 
             float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);
             int i = 0;
+            
             for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
                          keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint){
 
@@ -1131,21 +1137,22 @@ namespace ORB_SLAM3
                 if (level != 0){
                     keypoint->pt *= scale;
                 }
-
                 if(keypoint->pt.x >= vLappingArea[0] && keypoint->pt.x <= vLappingArea[1]){
                     _keypoints.at(stereoIndex) = (*keypoint);
                     desc.row(i).copyTo(descriptors.row(stereoIndex));
                     stereoIndex--;
                 }
                 else{
-                    _keypoints.at(monoIndex) = (*keypoint);
-                    desc.row(i).copyTo(descriptors.row(monoIndex));
-                    monoIndex++;
+                    if (mask.at<uchar>(keypoint->pt.y,keypoint->pt.x)== 0) { 
+                        _keypoints.at(monoIndex) = (*keypoint);
+                        desc.row(i).copyTo(descriptors.row(monoIndex));
+                        monoIndex++;
+                    } 
                 }
                 i++;
             }
         }
-        //cout << "[ORBextractor]: extracted " << _keypoints.size() << " KeyPoints" << endl;
+        // cout << "[ORBextractor]: extracted " << _keypoints.size() << " KeyPoints" << endl;
         return monoIndex;
     }
 
